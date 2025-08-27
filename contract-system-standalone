@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Controle de Contratos</title>
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .icon { width: 20px; height: 20px; }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+        .sort-button:hover { background-color: #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        // Ícones SVG inline
+        const PlusIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+        );
+
+        const EditIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+        );
+
+        const TrashIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+        );
+
+        const SearchIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+        );
+
+        const FilterIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+            </svg>
+        );
+
+        const UploadIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+        );
+
+        const BarChartIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+        );
+
+        const ListIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+        );
+
+        const XIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        );
+
+        const SaveIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+        );
+
+        const ChevronUpIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+        );
+
+        const ChevronDownIcon = () => (
+            <svg className="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+        );
+
+        // Dados iniciais dos contratos com nova estrutura
+        const initialContracts = [
+            {
+                id: 1,
+                numero: "CT-2024-001",
+                fornecedor: "Empresa ABC Ltda",
+                modalidade: "PREGÃO ELETRÔNICO",
+                fundamento: "LICITAÇÃO",
+                processo: "PROC-2024-001",
+                cpfCnpj: "12.345.678/0001-90",
+                valor: 150000,
+                dataInicio: "2024-01-15",
+                dataFim: "2024-12-15",
+                status: "Ativo",
+                objeto: "Prestação de serviços de consultoria em TI"
+            },
+            {
+                id: 2,
+                numero: "CT-2024-002",
+                fornecedor: "Tech Solutions S.A.",
+                modalidade: "CONCORRÊNCIA",
+                fundamento: "LICITAÇÃO",
+                processo: "PROC-2024-002",
+                cpfCnpj: "98.765.432/0001-10",
+                valor: 280000,
+                dataInicio: "2024-02-01",
+                dataFim: "2025-01-31",
+                status: "Ativo",
+                objeto: "Fornecimento de equipamentos de informática"
+            }
+        ];
+
+        const ContractControlSheet = () => {
+            const fileInputRef = useRef(null);
+
+            // Função para exportar contratos para Excel
+            const handleExportExcel = useCallback(() => {
+                console.log('Iniciando exportação para Excel...');
+                
+                // Criar estrutura XML para arquivo Excel
+                const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                const workbookXml = `${xmlHeader}<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Worksheet ss:Name="Contratos">
+<Table>
+<Row>
+<Cell><Data ss:Type="String">NUMERO_CONTRATO</Data></Cell>
+<Cell><Data ss:Type="String">FORNECEDOR</Data></Cell>
+<Cell><Data ss:Type="String">CPF_CNPJ</Data></Cell>
+<Cell><Data ss:Type="String">PROCESSO</Data></Cell>
+<Cell><Data ss:Type="String">MODALIDADE</Data></Cell>
+<Cell><Data ss:Type="String">FUNDAMENTO</Data></Cell>
+<Cell><Data ss:Type="String">VALOR_REAIS</Data></Cell>
+<Cell><Data ss:Type="String">DATA_INICIO</Data></Cell>
+<Cell><Data ss:Type="String">DATA_TERMINO</Data></Cell>
+<Cell><Data ss:Type="String">STATUS</Data></Cell>
+<Cell><Data ss:Type="String">OBJETO_CONTRATO</Data></Cell>
+</Row>`;
+
+                let dataRows = '';
+                filteredContracts.forEach(contract => {
+                    dataRows += `<Row>
+<Cell><Data ss:Type="String">${contract.numero || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.fornecedor || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.cpfCnpj || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.processo || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.modalidade || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.fundamento || ''}</Data></Cell>
+<Cell><Data ss:Type="Number">${contract.valor || 0}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.dataInicio ? formatDate(contract.dataInicio) : ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.dataFim ? formatDate(contract.dataFim) : ''}</Data></Cell>
+<Cell><Data ss:Type="String">${contract.status || ''}</Data></Cell>
+<Cell><Data ss:Type="String">${(contract.objeto || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</Data></Cell>
+</Row>`;
+                });
+
+                const workbookEnd = `</Table>
+</Worksheet>
+</Workbook>`;
+
+                const fullXml = workbookXml + dataRows + workbookEnd;
+                
+                // Criar arquivo Excel
+                const blob = new Blob([fullXml], { 
+                    type: 'application/vnd.ms-excel' 
+                });
+                
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `contratos_exportados_${new Date().toISOString().split('T')[0]}.xlsx`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                showNotification('Planilha exportada com sucesso!');
+                console.log('Exportação para Excel concluída!');
+            }, [filteredContracts, showNotification]);
+
+            
+            // Estados principais
+            const [contracts, setContracts] = useState(() => {
+                try {
+                    const saved = localStorage.getItem('contracts');
+                    return saved ? JSON.parse(saved) : initialContracts;
+                } catch (error) {
+                    console.error('Erro ao carregar dados do localStorage:', error);
+                    return initialContracts;
+                }
+            });
+            
+            const [searchTerm, setSearchTerm] = useState('');
+            const [statusFilter, setStatusFilter] = useState('todos');
+            const [modalidadeFilter, setModalidadeFilter] = useState('todos');
+            const [currentPage, setCurrentPage] = useState(1);
+            const [itemsPerPage] = useState(5);
+            const [showModal, setShowModal] = useState(false);
+            const [editingContract, setEditingContract] = useState(null);
+            const [notification, setNotification] = useState(null);
+            const [viewMode, setViewMode] = useState('list');
+            const [selectedContracts, setSelectedContracts] = useState([]);
+            const [sortOrder, setSortOrder] = useState('asc');
+
+            // Estado do formulário com nova estrutura
+            const [formData, setFormData] = useState({
+                numero: '',
+                fornecedor: '',
+                modalidade: 'PREGÃO ELETRÔNICO',
+                fundamento: 'LICITAÇÃO',
+                processo: '',
+                cpfCnpj: '',
+                valor: '',
+                dataInicio: '',
+                dataFim: '',
+                status: 'Ativo',
+                objeto: ''
+            });
+
+            // Salvar no localStorage sempre que contracts mudar
+            useEffect(() => {
+                try {
+                    localStorage.setItem('contracts', JSON.stringify(contracts));
+                } catch (error) {
+                    console.error('Erro ao salvar no localStorage:', error);
+                }
+            }, [contracts]);
+
+            // Função para mostrar notificação
+            const showNotification = useCallback((message, type = 'success') => {
+                setNotification({ message, type });
+                setTimeout(() => setNotification(null), 3000);
+            }, []);
+
+            // Função para importar Excel com mapeamento correto dos cabeçalhos
+            const handleExcelImport = useCallback((event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                        console.log('=== DEBUG IMPORTAÇÃO ===');
+                        console.log('Total de linhas na planilha:', jsonData.length);
+                        console.log('Cabeçalhos encontrados:', Object.keys(jsonData[0] || {}));
+                        console.log('Primeira linha completa:', jsonData[0]);
+                        console.log('Segunda linha completa:', jsonData[1]);
+
+                        // Função para formatar datas do Excel
+                        const formatExcelDate = (excelDate) => {
+                            if (!excelDate) return '';
+                            
+                            // Se já é uma string de data válida
+                            if (typeof excelDate === 'string') {
+                                // Tentar diferentes formatos de data
+                                const dateFormats = [
+                                    /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/, // DD/MM/YYYY
+                                    /^(\d{4})-(\d{1,2})-(\d{1,2})$/, // YYYY-MM-DD
+                                    /^(\d{1,2})-(\d{1,2})-(\d{4})$/, // DD-MM-YYYY
+                                ];
+                                
+                                for (const format of dateFormats) {
+                                    const match = excelDate.match(format);
+                                    if (match) {
+                                        if (format === dateFormats[1]) { // YYYY-MM-DD
+                                            return excelDate;
+                                        } else { // DD/MM/YYYY ou DD-MM-YYYY
+                                            const [, day, month, year] = match;
+                                            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+                                        }
+                                    }
+                                }
+                                return excelDate;
+                            }
+                            
+                            // Se é um número (data serial do Excel)
+                            if (typeof excelDate === 'number') {
+                                const date = new Date((excelDate - 25569) * 86400 * 1000);
+                                const year = date.getFullYear();
+                                const month = String(date.getMonth() + 1).padStart(2, '0');
+                                const day = String(date.getDate()).padStart(2, '0');
+                                return `${year}-${month}-${day}`;
+                            }
+                            
+                            return '';
+                        };
+
+                        const importedContracts = [];
+                        
+                        jsonData.forEach((row, index) => {
+                            console.log(`\n--- PROCESSANDO LINHA ${index + 2} ---`);
+                            console.log('Dados da linha:', row);
+                            
+                            // Tentar encontrar o número do contrato em qualquer coluna possível
+                            let numeroContrato = null;
+                            const possibleColumns = [
+                                'Numero do Contrato',
+                                'Número do Contrato', 
+                                'NUMERO DO CONTRATO',
+                                'NÚMERO DO CONTRATO',
+                                'Numero',
+                                'Número',
+                                'NUMERO',
+                                'NÚMERO',
+                                'Contract Number',
+                                'Nº do Contrato',
+                                'N° do Contrato'
+                            ];
+                            
+                            for (const col of possibleColumns) {
+                                if (row[col] !== undefined && row[col] !== null && row[col] !== '') {
+                                    numeroContrato = String(row[col]).trim();
+                                    console.log(`Número do contrato encontrado na coluna '${col}':`, numeroContrato);
+                                    break;
+                                }
+                            }
+                            
+                            // Se não encontrou em colunas específicas, tentar a primeira coluna com dados
+                            if (!numeroContrato) {
+                                const firstKey = Object.keys(row)[0];
+                                if (firstKey && row[firstKey] !== undefined && row[firstKey] !== null && row[firstKey] !== '') {
+                                    numeroContrato = String(row[firstKey]).trim();
+                                    console.log(`Usando primeira coluna '${firstKey}' como número do contrato:`, numeroContrato);
+                                }
+                            }
+                            
+                            // Última tentativa: procurar qualquer valor que pareça um número de contrato
+                            if (!numeroContrato) {
+                                for (const [key, value] of Object.entries(row)) {
+                                    if (value && String(value).trim() !== '') {
+                                        const strValue = String(value).trim();
+                                        // Se contém números ou barras, pode ser um número de contrato
+                                        if (/[0-9\/]/.test(strValue)) {
+                                            numeroContrato = strValue;
+                                            console.log(`Possível número do contrato encontrado em '${key}':`, numeroContrato);
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (!numeroContrato) {
+                                console.warn(`Linha ${index + 2}: Nenhum número de contrato encontrado, pulando linha`);
+                                return;
+                            }
+                            
+                            // Extrair outros dados
+                            const fornecedor = String(row['Fornecedor'] || row['FORNECEDOR'] || 'Fornecedor não informado').trim();
+                            const cpfCnpj = String(row['CPF/CNPJ Fornecedor'] || row['CPFCNPJ'] || row['CPF/CNPJ'] || '').trim();
+                            const processo = String(row['Processo'] || row['PROCESSO'] || '').trim();
+                            const modalidade = String(row['Modalidade'] || row['MODALIDADE'] || 'PREGÃO ELETRÔNICO').trim();
+                            const fundamento = String(row['Fundamento Legal'] || row['Fundamento'] || row['FUNDAMENTO'] || 'LICITAÇÃO').trim();
+                            const valor = parseFloat(row['Valor'] || row['VALOR'] || 0);
+                            const dataInicio = row['Data de Início'] || row['Data Início'] || row['DATA DE INÍCIO'] || row['DATA INÍCIO'];
+                            const dataFim = row['Data Fim'] || row['Data de Fim'] || row['DATA FIM'] || row['DATA DE FIM'];
+                            const objeto = String(row['Objeto'] || row['OBJETO'] || '').trim();
+                            
+                            console.log('Dados extraídos:', {
+                                numeroContrato,
+                                fornecedor,
+                                valor,
+                                dataInicio,
+                                dataFim
+                            });
+                            
+                            const contract = {
+                                id: Date.now() + index + Math.random(),
+                                numero: numeroContrato,
+                                fornecedor: fornecedor,
+                                cpfCnpj: cpfCnpj,
+                                processo: processo,
+                                modalidade: modalidade,
+                                fundamento: fundamento,
+                                valor: valor,
+                                dataInicio: formatExcelDate(dataInicio),
+                                dataFim: formatExcelDate(dataFim),
+                                objeto: objeto,
+                                status: 'Ativo'
+                            };
+                            
+                            importedContracts.push(contract);
+                            console.log(`Contrato ${index + 1} adicionado com sucesso:`, contract.numero);
+                        });
+
+                        console.log('\n=== RESULTADO FINAL ===');
+                        console.log(`Total de linhas processadas: ${jsonData.length}`);
+                        console.log(`Contratos válidos encontrados: ${importedContracts.length}`);
+                        
+                        if (importedContracts.length === 0) {
+                            showNotification('Nenhum contrato foi encontrado na planilha. Verifique se há dados nas linhas e se pelo menos uma coluna contém números de contrato.', 'error');
+                            return;
+                        }
+
+                        // Salvar no banco de dados local
+                        saveToDatabase(importedContracts);
+                        setContracts(prev => [...prev, ...importedContracts]);
+                        showNotification(`${importedContracts.length} contratos importados com sucesso!`);
+                        
+                        event.target.value = '';
+                    } catch (error) {
+                        console.error('Erro ao importar Excel:', error);
+                        showNotification('Erro ao importar arquivo Excel. Verifique o formato e tente novamente.', 'error');
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }, [showNotification]);
+
+            // Sistema de banco de dados local usando IndexedDB
+            const initDatabase = useCallback(() => {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('ContractDB', 1);
+                    
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => resolve(request.result);
+                    
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('contracts')) {
+                            const store = db.createObjectStore('contracts', { keyPath: 'id' });
+                            store.createIndex('numero', 'numero', { unique: false });
+                            store.createIndex('fornecedor', 'fornecedor', { unique: false });
+                            store.createIndex('status', 'status', { unique: false });
+                        }
+                    };
+                });
+            }, []);
+
+            const saveToDatabase = useCallback(async (contractsToSave) => {
+                try {
+                    const db = await initDatabase();
+                    const transaction = db.transaction(['contracts'], 'readwrite');
+                    const store = transaction.objectStore('contracts');
+                    
+                    contractsToSave.forEach(contract => {
+                        store.put(contract);
+                    });
+                    
+                    await new Promise((resolve, reject) => {
+                        transaction.oncomplete = () => resolve();
+                        transaction.onerror = () => reject(transaction.error);
+                    });
+                    
+                    console.log('Contratos salvos no banco de dados');
+                } catch (error) {
+                    console.error('Erro ao salvar no banco de dados:', error);
+                }
+            }, [initDatabase]);
+
+            const loadFromDatabase = useCallback(async () => {
+                try {
+                    const db = await initDatabase();
+                    const transaction = db.transaction(['contracts'], 'readonly');
+                    const store = transaction.objectStore('contracts');
+                    const request = store.getAll();
+                    
+                    return new Promise((resolve, reject) => {
+                        request.onsuccess = () => resolve(request.result);
+                        request.onerror = () => reject(request.error);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar do banco de dados:', error);
+                    return [];
+                }
+            }, [initDatabase]);
+
+            // Carregar dados do banco ao inicializar
+            useEffect(() => {
+                const loadData = async () => {
+                    try {
+                        const dbContracts = await loadFromDatabase();
+                        if (dbContracts.length > 0) {
+                            setContracts(dbContracts);
+                        } else {
+                            // Se não há dados no banco, usar dados iniciais
+                            setContracts(initialContracts);
+                            saveToDatabase(initialContracts);
+                        }
+                    } catch (error) {
+                        console.error('Erro ao carregar dados:', error);
+                        setContracts(initialContracts);
+                    }
+                };
+                
+                loadData();
+            }, [loadFromDatabase]);
+
+            // Salvar automaticamente no banco sempre que contracts mudar
+            useEffect(() => {
+                if (contracts.length > 0) {
+                    saveToDatabase(contracts);
+                    // Também manter o localStorage como backup
+                    localStorage.setItem('contracts', JSON.stringify(contracts));
+                }
+            }, [contracts, saveToDatabase]);
+
+            // Função para alternar seleção de contrato
+            const toggleContractSelection = useCallback((contractId) => {
+                setSelectedContracts(prev => {
+                    if (prev.includes(contractId)) {
+                        return prev.filter(id => id !== contractId);
+                    } else {
+                        return [...prev, contractId];
+                    }
+                });
+            }, []);
+
+            // Função para deletar contratos selecionados
+            const handleDeleteAll = useCallback(() => {
+                if (contracts.length === 0) {
+                    showNotification('Não há contratos para excluir.', 'error');
+                    return;
+                }
+                
+                const confirmMessage = `Tem certeza que deseja excluir TODOS os ${contracts.length} contratos? Esta ação não pode ser desfeita!`;
+                
+                if (confirm(confirmMessage)) {
+                    setContracts([]);
+                    setSelectedContracts([]);
+                    
+                    // Limpar também do banco de dados
+                    const clearDatabase = async () => {
+                        try {
+                            const db = await initDatabase();
+                            const transaction = db.transaction(['contracts'], 'readwrite');
+                            const store = transaction.objectStore('contracts');
+                            await store.clear();
+                            
+                            // Limpar localStorage também
+                            localStorage.removeItem('contracts');
+                            
+                            showNotification('Todos os contratos foram excluídos com sucesso!');
+                        } catch (error) {
+                            console.error('Erro ao limpar banco de dados:', error);
+                            showNotification('Contratos excluídos, mas houve erro ao limpar o banco.', 'error');
+                        }
+                    };
+                    
+                    clearDatabase();
+                }
+            }, [contracts.length, showNotification, initDatabase]);
+
+            const handleBatchDelete = useCallback(() => {
+                if (selectedContracts.length === 0) return;
+                
+                if (confirm(`Tem certeza que deseja excluir ${selectedContracts.length} contrato(s)?`)) {
+                    setContracts(prev => prev.filter(contract => !selectedContracts.includes(contract.id)));
+                    setSelectedContracts([]);
+                    showNotification(`${selectedContracts.length} contrato(s) excluído(s) com sucesso!`);
+                }
+            }, [selectedContracts, showNotification]);
+
+            // Filtros e busca
+            const filteredContracts = useMemo(() => {
+                return contracts.filter(contract => {
+                    const matchesSearch = searchTerm === '' || 
+                        contract.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        contract.fornecedor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        contract.objeto.toLowerCase().includes(searchTerm.toLowerCase());
+                    
+                    const matchesStatus = statusFilter === 'todos' || contract.status === statusFilter;
+                    const matchesModalidade = modalidadeFilter === 'todos' || contract.modalidade === modalidadeFilter;
+                    
+                    return matchesSearch && matchesStatus && matchesModalidade;
+                }).sort((a, b) => {
+                    if (sortOrder === 'asc') {
+                        return a.valor - b.valor;
+                    } else {
+                        return b.valor - a.valor;
+                    }
+                });
+            }, [contracts, searchTerm, statusFilter, modalidadeFilter, sortOrder]);
+
+            // Paginação
+            const totalPages = Math.ceil(filteredContracts.length / itemsPerPage);
+            const paginatedContracts = useMemo(() => {
+                const startIndex = (currentPage - 1) * itemsPerPage;
+                return filteredContracts.slice(startIndex, startIndex + itemsPerPage);
+            }, [filteredContracts, currentPage, itemsPerPage]);
+
+            // Estatísticas do dashboard
+            const stats = useMemo(() => {
+                const total = contracts.length;
+                const ativos = contracts.filter(c => c.status === 'Ativo').length;
+                const pendentes = contracts.filter(c => c.status === 'Pendente').length;
+                const finalizados = contracts.filter(c => c.status === 'Finalizado').length;
+                const incorretos = contracts.filter(c => c.status === 'Incorreto').length;
+                const valorTotal = contracts.reduce((sum, c) => sum + c.valor, 0);
+                
+                return { total, ativos, pendentes, finalizados, incorretos, valorTotal };
+            }, [contracts]);
+
+            // Funções de manipulação
+            const handleSubmit = useCallback((e) => {
+                e.preventDefault();
+                
+                if (editingContract) {
+                    setContracts(prev => prev.map(contract => 
+                        contract.id === editingContract.id 
+                            ? { ...formData, id: editingContract.id, valor: parseFloat(formData.valor) }
+                            : contract
+                    ));
+                    showNotification('Contrato atualizado com sucesso!');
+                } else {
+                    const newContract = {
+                        ...formData,
+                        id: Date.now(),
+                        valor: parseFloat(formData.valor)
+                    };
+                    setContracts(prev => [...prev, newContract]);
+                    showNotification('Contrato criado com sucesso!');
+                }
+                
+                setShowModal(false);
+                setEditingContract(null);
+                setFormData({
+                    numero: '',
+                    fornecedor: '',
+                    modalidade: 'PREGÃO ELETRÔNICO',
+                    fundamento: 'LICITAÇÃO',
+                    processo: '',
+                    cpfCnpj: '',
+                    valor: '',
+                    dataInicio: '',
+                    dataFim: '',
+                    status: 'Ativo',
+                    objeto: ''
+                });
+            }, [formData, editingContract, showNotification]);
+
+            const handleEdit = useCallback((contract) => {
+                setEditingContract(contract);
+                setFormData({
+                    numero: contract.numero,
+                    fornecedor: contract.fornecedor,
+                    modalidade: contract.modalidade,
+                    fundamento: contract.fundamento,
+                    processo: contract.processo,
+                    cpfCnpj: contract.cpfCnpj,
+                    valor: contract.valor.toString(),
+                    dataInicio: contract.dataInicio,
+                    dataFim: contract.dataFim,
+                    status: contract.status,
+                    objeto: contract.objeto
+                });
+                setShowModal(true);
+            }, []);
+
+            const handleDelete = useCallback((id) => {
+                if (confirm('Tem certeza que deseja excluir este contrato?')) {
+                    setContracts(prev => prev.filter(contract => contract.id !== id));
+                    showNotification('Contrato excluído com sucesso!');
+                }
+            }, [showNotification]);
+
+            // Funções auxiliares
+            const formatCurrency = (value) => {
+                return new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }).format(value);
+            };
+
+            const formatDate = (dateString) => {
+                return new Date(dateString + 'T00:00:00').toLocaleDateString('pt-BR');
+            };
+
+            const getStatusColor = (status) => {
+                switch (status) {
+                    case 'Ativo': return 'bg-green-100 text-green-800';
+                    case 'Pendente': return 'bg-yellow-100 text-yellow-800';
+                    case 'Finalizado': return 'bg-gray-100 text-gray-800';
+                    case 'Incorreto': return 'bg-red-100 text-red-800';
+                    default: return 'bg-gray-100 text-gray-800';
+                }
+            };
+
+            const toggleSortOrder = useCallback(() => {
+                setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+            }, []);
+
+            const toggleSelectAll = useCallback(() => {
+                if (selectedContracts.length === paginatedContracts.length) {
+                    setSelectedContracts([]);
+                } else {
+                    setSelectedContracts(paginatedContracts.map(contract => contract.id));
+                }
+            }, [selectedContracts.length, paginatedContracts]);
+
+            return (
+                <div className="min-h-screen bg-gray-50 p-4">
+                    {/* Notificação */}
+                    {notification && (
+                        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg ${
+                            notification.type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'
+                        } slide-in`}>
+                            {notification.message}
+                        </div>
+                    )}
+
+                    <div className="max-w-7xl mx-auto">
+                        {/* Cabeçalho */}
+                        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                                <div>
+                                    <h1 className="text-2xl font-bold text-gray-900">Sistema de Controle de Contratos</h1>
+                                    <p className="text-gray-600 mt-1">Gerencie seus contratos de forma eficiente</p>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setViewMode(viewMode === 'list' ? 'dashboard' : 'list')}
+                                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+                                    >
+                                        {viewMode === 'list' ? <BarChartIcon /> : <ListIcon />}
+                                        {viewMode === 'list' ? 'Dashboard' : 'Lista'}
+                                    </button>
+                                    
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleExcelImport}
+                                        accept=".xlsx,.xls"
+                                        style={{ display: 'none' }}
+                                    />
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                                    >
+                                        <UploadIcon />
+                                        Importar Excel
+                                    </button>
+                                    {contracts.length > 0 && (
+                                        <button
+                                            onClick={handleExportExcel}
+                                            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-2"
+                                            title="Exportar contratos para Excel (.xlsx)"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Exportar Excel
+                                        </button>
+                                    )}
+                                    
+                                    {selectedContracts.length > 0 && (
+                                        <button
+                                            onClick={handleBatchDelete}
+                                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors flex items-center gap-2"
+                                        >
+                                            <TrashIcon />
+                                            Excluir Selecionados ({selectedContracts.length})
+                                        </button>
+                                    )}
+                                    
+                                    {contracts.length > 0 && (
+                                        <button
+                                            onClick={handleDeleteAll}
+                                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                                        >
+                                            <TrashIcon />
+                                            Excluir Todos ({contracts.length})
+                                        </button>
+                                    )}
+                                    
+                                    <button
+                                        onClick={() => setShowModal(true)}
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                    >
+                                        <PlusIcon />
+                                        Novo Contrato
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Dashboard */}
+                        {viewMode === 'dashboard' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                                <div className="bg-white p-6 rounded-lg shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">Total de Contratos</p>
+                                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                                        </div>
+                                        <div className="p-3 bg-blue-100 rounded-full">
+                                            <ListIcon />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-white p-6 rounded-lg shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">Contratos Ativos</p>
+                                            <p className="text-2xl font-bold text-green-600">{stats.ativos}</p>
+                                        </div>
+                                        <div className="p-3 bg-green-100 rounded-full">
+                                            <BarChartIcon />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-white p-6 rounded-lg shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">Valor Total</p>
+                                            <p className="text-2xl font-bold text-blue-600">{formatCurrency(stats.valorTotal)}</p>
+                                        </div>
+                                        <div className="p-3 bg-blue-100 rounded-full">
+                                            <BarChartIcon />
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div className="bg-white p-6 rounded-lg shadow-sm">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-600">Pendentes/Incorretos</p>
+                                            <p className="text-2xl font-bold text-yellow-600">{stats.pendentes + stats.incorretos}</p>
+                                        </div>
+                                        <div className="p-3 bg-yellow-100 rounded-full">
+                                            <BarChartIcon />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Filtros e Busca */}
+                        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="relative">
+                                    <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Buscar contratos..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    />
+                                </div>
+                                
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => setStatusFilter(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="todos">Todos os Status</option>
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Pendente">Pendente</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="Incorreto">Incorreto</option>
+                                </select>
+                                
+                                <select
+                                    value={modalidadeFilter}
+                                    onChange={(e) => setModalidadeFilter(e.target.value)}
+                                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                >
+                                    <option value="todos">Todas as Modalidades</option>
+                                    <option value="PREGÃO ELETRÔNICO">Pregão Eletrônico</option>
+                                    <option value="CONCORRÊNCIA">Concorrência</option>
+                                    <option value="TOMADA DE PREÇOS">Tomada de Preços</option>
+                                    <option value="CONVITE">Convite</option>
+                                    <option value="DISPENSA">Dispensa</option>
+                                    <option value="INEXIGIBILIDADE">Inexigibilidade</option>
+                                </select>
+                                
+                                <div className="flex items-center gap-2 text-sm text-gray-600">
+                                    <FilterIcon />
+                                    {filteredContracts.length} de {contracts.length} contratos
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Lista de Contratos */}
+                        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedContracts.length === paginatedContracts.length && paginatedContracts.length > 0}
+                                                    onChange={toggleSelectAll}
+                                                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contrato</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fornecedor</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Modalidade</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CPF/CNPJ</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sort-button cursor-pointer" onClick={toggleSortOrder}>
+                                                <div className="flex items-center gap-1">
+                                                    Valor
+                                                    {sortOrder === 'asc' ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                                                </div>
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {paginatedContracts.map((contract) => (
+                                            <tr key={contract.id} className="hover:bg-gray-50 transition-colors">
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedContracts.includes(contract.id)}
+                                                        onChange={() => toggleContractSelection(contract.id)}
+                                                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                    />
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div>
+                                                        <div className="text-sm font-medium text-gray-900">{contract.numero}</div>
+                                                        <div className="text-sm text-gray-500 truncate max-w-xs">{contract.processo}</div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{contract.fornecedor}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.modalidade}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{contract.cpfCnpj}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{formatCurrency(contract.valor)}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    <div>{formatDate(contract.dataInicio)}</div>
+                                                    <div>até {formatDate(contract.dataFim)}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(contract.status)}`}>
+                                                        {contract.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleEdit(contract)}
+                                                            className="text-blue-600 hover:text-blue-900 transition-colors"
+                                                            title="Editar"
+                                                        >
+                                                            <EditIcon />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(contract.id)}
+                                                            className="text-red-600 hover:text-red-900 transition-colors"
+                                                            title="Excluir"
+                                                        >
+                                                            <TrashIcon />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Paginação */}
+                            {totalPages > 1 && (
+                                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                                    <div className="flex-1 flex justify-between sm:hidden">
+                                        <button
+                                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                            disabled={currentPage === 1}
+                                            className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Anterior
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                            disabled={currentPage === totalPages}
+                                            className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            Próximo
+                                        </button>
+                                    </div>
+                                    <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-sm text-gray-700">
+                                                Mostrando <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> até{' '}
+                                                <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredContracts.length)}</span> de{' '}
+                                                <span className="font-medium">{filteredContracts.length}</span> resultados
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                                    <button
+                                                        key={page}
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                                            page === currentPage
+                                                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                                        }`}
+                                                    >
+                                                        {page}
+                                                    </button>
+                                                ))}
+                                            </nav>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal */}
+                        {showModal && (
+                            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
+                                <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto slide-in">
+                                    <div className="p-6">
+                                        <div className="flex items-center justify-between mb-6">
+                                            <h3 className="text-lg font-medium text-gray-900">
+                                                {editingContract ? 'Editar Contrato' : 'Novo Contrato'}
+                                            </h3>
+                                            <button
+                                                onClick={() => {
+                                                    setShowModal(false);
+                                                    setEditingContract(null);
+                                                    setFormData({
+                                                        numero: '',
+                                                        fornecedor: '',
+                                                        modalidade: 'PREGÃO ELETRÔNICO',
+                                                        fundamento: 'LICITAÇÃO',
+                                                        processo: '',
+                                                        cpfCnpj: '',
+                                                        valor: '',
+                                                        dataInicio: '',
+                                                        dataFim: '',
+                                                        status: 'Ativo',
+                                                        objeto: ''
+                                                    });
+                                                }}
+                                                className="text-gray-400 hover:text-gray-600 transition-colors"
+                                            >
+                                                <XIcon />
+                                            </button>
+                                        </div>
+
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Número do Contrato</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={formData.numero}
+                                                        onChange={(e) => setFormData({...formData, numero: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="Ex: CT-2024-001"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor</label>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        value={formData.fornecedor}
+                                                        onChange={(e) => setFormData({...formData, fornecedor: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="Nome do fornecedor"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Modalidade</label>
+                                                    <select
+                                                        value={formData.modalidade}
+                                                        onChange={(e) => setFormData({...formData, modalidade: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="PREGÃO ELETRÔNICO">Pregão Eletrônico</option>
+                                                        <option value="CONCORRÊNCIA">Concorrência</option>
+                                                        <option value="TOMADA DE PREÇOS">Tomada de Preços</option>
+                                                        <option value="CONVITE">Convite</option>
+                                                        <option value="DISPENSA">Dispensa</option>
+                                                        <option value="INEXIGIBILIDADE">Inexigibilidade</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Fundamento</label>
+                                                    <select
+                                                        value={formData.fundamento}
+                                                        onChange={(e) => setFormData({...formData, fundamento: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="LICITAÇÃO">Licitação</option>
+                                                        <option value="DISPENSA">Dispensa</option>
+                                                        <option value="INEXIGIBILIDADE">Inexigibilidade</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Processo</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.processo}
+                                                        onChange={(e) => setFormData({...formData, processo: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="Número do processo"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">CPF/CNPJ</label>
+                                                    <input
+                                                        type="text"
+                                                        value={formData.cpfCnpj}
+                                                        onChange={(e) => setFormData({...formData, cpfCnpj: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="CPF ou CNPJ do fornecedor"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+                                                    <input
+                                                        type="number"
+                                                        required
+                                                        min="0"
+                                                        step="0.01"
+                                                        value={formData.valor}
+                                                        onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                        placeholder="0,00"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                                                    <select
+                                                        value={formData.status}
+                                                        onChange={(e) => setFormData({...formData, status: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    >
+                                                        <option value="Ativo">Ativo</option>
+                                                        <option value="Pendente">Pendente</option>
+                                                        <option value="Finalizado">Finalizado</option>
+                                                        <option value="Incorreto">Incorreto</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Início</label>
+                                                    <input
+                                                        type="date"
+                                                        required
+                                                        value={formData.dataInicio}
+                                                        onChange={(e) => setFormData({...formData, dataInicio: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Data de Fim</label>
+                                                    <input
+                                                        type="date"
+                                                        required
+                                                        value={formData.dataFim}
+                                                        onChange={(e) => setFormData({...formData, dataFim: e.target.value})}
+                                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">Objeto</label>
+                                                <textarea
+                                                    value={formData.objeto}
+                                                    onChange={(e) => setFormData({...formData, objeto: e.target.value})}
+                                                    rows={3}
+                                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                    placeholder="Descrição do objeto do contrato..."
+                                                />
+                                            </div>
+
+                                            <div className="flex justify-end gap-3 pt-4">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowModal(false);
+                                                        setEditingContract(null);
+                                                        setFormData({
+                                                            numero: '',
+                                                            fornecedor: '',
+                                                            modalidade: 'PREGÃO ELETRÔNICO',
+                                                            fundamento: 'LICITAÇÃO',
+                                                            processo: '',
+                                                            cpfCnpj: '',
+                                                            valor: '',
+                                                            dataInicio: '',
+                                                            dataFim: '',
+                                                            status: 'Ativo',
+                                                            objeto: ''
+                                                        });
+                                                    }}
+                                                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    type="submit"
+                                                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center gap-2"
+                                                >
+                                                    <SaveIcon />
+                                                    {editingContract ? 'Atualizar' : 'Criar'} Contrato
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(React.createElement(ContractControlSheet), document.getElementById('root'));
+    </script>
+</body>
+</html>
